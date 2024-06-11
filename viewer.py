@@ -64,7 +64,7 @@ class ArrayViewer:
         main_frame.pack(fill=tk.BOTH, expand=True)
         
         self.controls_frame = ttk.Frame(main_frame)
-        self.controls_frame.pack(side=tk.LEFT, fill=tk.Y)
+        self.controls_frame.pack(side=tk.LEFT)
         
         self.index_vars = []
         self.check_vars = []
@@ -82,7 +82,7 @@ class ArrayViewer:
             self.check_vars.append(check_var)
             
             combined_frame = ttk.Frame(self.controls_frame)
-            combined_frame.grid(row=i, column=0, columnspan=2)
+            combined_frame.grid(row=i, column=0, columnspan=2, padx=10, pady=5)
             
             check = ttk.Checkbutton(combined_frame, style="Small.TCheckbutton", variable=check_var, command=self.update_view, width=2)
             check.pack(side=tk.LEFT)
@@ -91,14 +91,14 @@ class ArrayViewer:
             
             
             spinbox = ttk.Spinbox(self.controls_frame, from_=0, to=array.shape[i] - 1, textvariable=var, command=self.update_view, width=2)
-            spinbox.grid(row=i, column=2, padx=(2, 2), pady=(2, 2))
+            spinbox.grid(row=i, column=2, columnspan=1)
 
             label1 = ttk.Label(self.controls_frame, text=f"{self.array_shape[i]}")
-            label1.grid(row=i, column=3, padx=(2, 2), pady=(2, 2))
+            label1.grid(row=i, column=3, columnspan=1, padx=5, pady=5)
 
         # Add buttons for rotation and mirroring
         rotation_frame = ttk.Frame(self.controls_frame)
-        rotation_frame.grid(row=13, column=0, columnspan=4, pady=0)
+        rotation_frame.grid(row=13, column=0, columnspan=4, pady=10)
 
         rotate_left_button = ttk.Button(rotation_frame, text="Rot L", command=self.rotate_left, width=5)
         rotate_left_button.pack(side=tk.LEFT, padx=2)
