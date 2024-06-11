@@ -2,6 +2,8 @@
 
 Array Viewer is a Python GUI application built with Tkinter that allows users to visualize and interact with multi-dimensional arrays stored in `.cfl` or `.npy` files.
 
+<img src="preview.png" alt="ArrayViewer" style="width:650px;"/>
+
 ## Features
 
 - Load and visualize multi-dimensional arrays from `.cfl` or `.npy` files.
