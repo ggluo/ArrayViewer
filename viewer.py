@@ -81,46 +81,47 @@ class ArrayViewer:
             check_var = tk.BooleanVar(value=self.enabled_dims[i])
             self.check_vars.append(check_var)
             
-            check = ttk.Checkbutton(self.controls_frame, variable=check_var, command=self.update_view, width=1)
-            check.grid(row=i, column=0)
+            combined_frame = ttk.Frame(self.controls_frame)
+            combined_frame.grid(row=i, column=0, columnspan=2)
             
-            label = ttk.Label(self.controls_frame, text=f"Dim {i}:")
-            label.grid(row=i, column=1)
+            check = ttk.Checkbutton(combined_frame, style="Small.TCheckbutton", variable=check_var, command=self.update_view, width=2)
+            check.pack(side=tk.LEFT)
+            label = ttk.Label(combined_frame, text=f"Dim {i}:")
+            label.pack(side=tk.LEFT)
             
-            spinbox = ttk.Spinbox(self.controls_frame, from_=0, to=array.shape[i] - 1, textvariable=var, command=self.update_view, width=4)
-            spinbox.grid(row=i, column=2)
+            
+            spinbox = ttk.Spinbox(self.controls_frame, from_=0, to=array.shape[i] - 1, textvariable=var, command=self.update_view, width=2)
+            spinbox.grid(row=i, column=2, padx=(2, 2), pady=(2, 2))
 
             label1 = ttk.Label(self.controls_frame, text=f"{self.array_shape[i]}")
-            label1.grid(row=i, column=3)
-        
+            label1.grid(row=i, column=3, padx=(2, 2), pady=(2, 2))
+
         # Add buttons for rotation and mirroring
         rotation_frame = ttk.Frame(self.controls_frame)
-        rotation_frame.grid(row=13, column=0, columnspan=4, pady=10)
+        rotation_frame.grid(row=13, column=0, columnspan=4, pady=0)
 
-        rotate_left_button = ttk.Button(rotation_frame, text="Rotate Left", command=self.rotate_left)
-        rotate_left_button.pack(side=tk.LEFT)
+        rotate_left_button = ttk.Button(rotation_frame, text="Rot L", command=self.rotate_left, width=5)
+        rotate_left_button.pack(side=tk.LEFT, padx=2)
 
-        rotate_right_button = ttk.Button(rotation_frame, text="Rotate Right", command=self.rotate_right)
-        rotate_right_button.pack(side=tk.LEFT)
+        rotate_right_button = ttk.Button(rotation_frame, text="Rot R", command=self.rotate_right, width=5)
+        rotate_right_button.pack(side=tk.LEFT, padx=2)
 
-        mirror_button = ttk.Button(rotation_frame, text="Mirror", command=self.mirror_image)
-        mirror_button.pack(side=tk.LEFT)
+        mirror_button = ttk.Button(rotation_frame, text="Mirror", command=self.mirror_image, width=5)
+        mirror_button.pack(side=tk.LEFT, padx=2)
 
-        save_button = ttk.Button(rotation_frame, text="Save", command=self.save_image)
-        save_button.pack(side=tk.LEFT)
+        save_button = ttk.Button(rotation_frame, text="Save", command=self.save_image, width=5)
+        save_button.pack(side=tk.LEFT, padx=2)
         
         # Add colormap selection
         colormap_label = ttk.Label(self.controls_frame, text="Colormap:")
         colormap_label.grid(row=14, column=0, columnspan=1)
         
         self.colormap_var = tk.StringVar(value=self.colormap)
-        colormap_combobox = ttk.Combobox(self.controls_frame, textvariable=self.colormap_var, values=plt.colormaps())
-        colormap_combobox.grid(row=14, column=1, columnspan=2)
+        colormap_combobox = ttk.Combobox(self.controls_frame, textvariable=self.colormap_var, values=plt.colormaps(), width=10)
+        colormap_combobox.grid(row=14, column=1, columnspan=1)
         colormap_combobox.bind("<<ComboboxSelected>>", self.update_colormap)
-        
-        
-
-        self.figure, self.ax = plt.subplots()
+    
+        self.figure, self.ax = plt.subplots(1, 1, figsize=(10, 10))
         self.canvas = FigureCanvasTkAgg(self.figure, master=main_frame)
         self.canvas.get_tk_widget().pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
 
@@ -211,7 +212,7 @@ class ArrayViewer:
 def start_viewer(file_path):
     root = tk.Tk()
     root.title("Array Viewer")
-    root.geometry("800x600")
+    root.geometry("1000x700")
     
     array = read_array_file(file_path)
     app = ArrayViewer(root, array)
