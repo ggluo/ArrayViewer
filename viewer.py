@@ -5,6 +5,7 @@ import tkinter as tk
 from tkinter import ttk
 import numpy as np
 import matplotlib.pyplot as plt
+plt.switch_backend('TkAgg')
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import sys
 import logging
