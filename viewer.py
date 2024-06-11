@@ -172,11 +172,11 @@ class ArrayViewer:
         except Exception as e:
             logging.error(f"Error in update_view: {e}")
 
-    def rotate_left(self):
+    def rotate_right(self):
         self.rotation_angle = (self.rotation_angle - 90) % 360
         self.update_view()
 
-    def rotate_right(self):
+    def rotate_left(self):
         self.rotation_angle = (self.rotation_angle + 90) % 360
         self.update_view()
 
