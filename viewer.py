@@ -81,13 +81,13 @@ class ArrayViewer:
             check_var = tk.BooleanVar(value=self.enabled_dims[i])
             self.check_vars.append(check_var)
             
-            check = ttk.Checkbutton(self.controls_frame, variable=check_var, command=self.update_view)
+            check = ttk.Checkbutton(self.controls_frame, variable=check_var, command=self.update_view, width=1)
             check.grid(row=i, column=0)
             
             label = ttk.Label(self.controls_frame, text=f"Dim {i}:")
             label.grid(row=i, column=1)
             
-            spinbox = ttk.Spinbox(self.controls_frame, from_=0, to=array.shape[i] - 1, textvariable=var, command=self.update_view, width=5)
+            spinbox = ttk.Spinbox(self.controls_frame, from_=0, to=array.shape[i] - 1, textvariable=var, command=self.update_view, width=4)
             spinbox.grid(row=i, column=2)
 
             label1 = ttk.Label(self.controls_frame, text=f"{self.array_shape[i]}")
