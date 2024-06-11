@@ -82,7 +82,7 @@ class ArrayViewer:
             self.check_vars.append(check_var)
             
             combined_frame = ttk.Frame(self.controls_frame)
-            combined_frame.grid(row=i, column=0, columnspan=2, padx=10, pady=5)
+            combined_frame.grid(row=i, column=0, columnspan=2, pady=5)
             
             check = ttk.Checkbutton(combined_frame, style="Small.TCheckbutton", variable=check_var, command=self.update_view, width=2)
             check.pack(side=tk.LEFT)
@@ -113,7 +113,7 @@ class ArrayViewer:
         save_button.pack(side=tk.LEFT, padx=2)
         
         # Add colormap selection
-        colormap_label = ttk.Label(self.controls_frame, text="Colormap:")
+        colormap_label = ttk.Label(self.controls_frame, text="       Colormap:")
         colormap_label.grid(row=14, column=0, columnspan=1)
         
         self.colormap_var = tk.StringVar(value=self.colormap)
