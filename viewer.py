@@ -59,6 +59,8 @@ class ArrayViewer:
         self.rotation_angle = 0  # Initialize rotation angle
         self.mirror = False  # Initialize mirroring
         self.colormap = 'gray'  # Initialize colormap
+        self.display_mode = 'magnitude'  # Initialize display mode
+
         
         main_frame = ttk.Frame(root)
         main_frame.pack(fill=tk.BOTH, expand=True)
@@ -98,7 +100,7 @@ class ArrayViewer:
 
         # Add buttons for rotation and mirroring
         rotation_frame = ttk.Frame(self.controls_frame)
-        rotation_frame.grid(row=13, column=0, columnspan=4, pady=10)
+        rotation_frame.grid(row=13, column=0, columnspan=5, pady=10)
 
         rotate_left_button = ttk.Button(rotation_frame, text="Rot L", command=self.rotate_left, width=5)
         rotate_left_button.pack(side=tk.LEFT, padx=2)
@@ -108,6 +110,10 @@ class ArrayViewer:
 
         mirror_button = ttk.Button(rotation_frame, text="Mirror", command=self.mirror_image, width=5)
         mirror_button.pack(side=tk.LEFT, padx=2)
+
+        # Add toggle button for magnitude/phase
+        self.toggle_button = ttk.Button(rotation_frame, text="Mag", command=self.toggle_display_mode, width=5)
+        self.toggle_button.pack(side=tk.LEFT, padx=2)
 
         save_button = ttk.Button(rotation_frame, text="Save", command=self.save_image, width=5)
         save_button.pack(side=tk.LEFT, padx=2)
@@ -152,7 +158,10 @@ class ArrayViewer:
             self.ax.clear()
             current_slice = self.get_current_slice()
             if current_slice is not None and current_slice.ndim == 2:
-                image = np.abs(current_slice)
+                if self.display_mode == 'magnitude':
+                    image = np.abs(current_slice)
+                else:
+                    image = np.angle(current_slice)
                 
                 # Apply rotation
                 if self.rotation_angle != 0:
@@ -183,6 +192,15 @@ class ArrayViewer:
 
     def mirror_image(self):
         self.mirror = not self.mirror
+        self.update_view()
+
+    def toggle_display_mode(self):
+        if self.display_mode == 'magnitude':
+            self.display_mode = 'phase'
+            self.toggle_button.config(text='Phase')
+        else:
+            self.display_mode = 'magnitude'
+            self.toggle_button.config(text='Mag')
         self.update_view()
 
     def update_colormap(self, event):
