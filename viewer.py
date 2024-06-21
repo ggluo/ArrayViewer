@@ -73,7 +73,7 @@ class ArrayViewer:
         
         self.index_vars = []
         self.check_vars = []
-        self.spinbox_vars = []
+
         non_singleton_dims = [i for i, dim in enumerate(array.shape) if dim > 1]
 
         if len(non_singleton_dims) >= 2:
@@ -81,8 +81,6 @@ class ArrayViewer:
             self.enabled_dims[non_singleton_dims[1]] = True
 
         for i in range(12):
-            var = tk.IntVar(value=0)
-            self.index_vars.append(var)
             
             check_var = tk.BooleanVar(value=self.enabled_dims[i])
             self.check_vars.append(check_var)
@@ -94,26 +92,22 @@ class ArrayViewer:
             check.pack(side=tk.LEFT)
             label = ttk.Label(combined_frame, text=f"Dim {i}:")
             label.pack(side=tk.LEFT)
+             
+            var = tk.IntVar(value=0)
+            self.index_vars.append(var)
             
-            
-            spinbox_var = tk.StringVar()
-            spinbox_var.set('0')
-            spinbox = ttk.Spinbox(self.controls_frame, from_=0, to=array.shape[i] - 1, textvariable=spinbox_var, command=self.update_view, width=5)
+            spinbox = ttk.Spinbox(self.controls_frame, from_=0, to=array.shape[i] - 1, textvariable=var, command=self.update_view, width=5)
             spinbox.grid(row=i, column=2, columnspan=1)
-            spinbox.bind('<MouseWheel>', lambda event, s=spinbox, v=spinbox_var: self.on_spinbox_scroll(event, s, v))
-            spinbox.bind('<Button-4>', lambda event, s=spinbox, v=spinbox_var: self.on_spinbox_scroll(event, s, v))
-            spinbox.bind('<Button-5>', lambda event, s=spinbox, v=spinbox_var: self.on_spinbox_scroll(event, s, v))
-            spinbox.bind('<FocusOut>', lambda event, s=spinbox, v=spinbox_var: self.update_index(event, s, v, i))
+            spinbox.bind('<MouseWheel>', lambda event, s=spinbox, v=var: self.on_spinbox_scroll(event, s, v))
+            spinbox.bind('<Button-4>', lambda event, s=spinbox, v=var: self.on_spinbox_scroll(event, s, v))
+            spinbox.bind('<Button-5>', lambda event, s=spinbox, v=var: self.on_spinbox_scroll(event, s, v))
+            spinbox.bind('<FocusOut>', lambda event, s=spinbox, v=var: self.update_index(event, s, v, i))
 
             label1 = ttk.Label(self.controls_frame, text=f"{self.array_shape[i]}")
             label1.grid(row=i, column=3, columnspan=1, padx=5, pady=5)
 
-            self.spinbox_vars.append(spinbox_var)
-
             label1 = ttk.Label(self.controls_frame, text=f"{self.array_shape[i]}")
             label1.grid(row=i, column=3, columnspan=1, padx=5, pady=5)
-
-            self.spinbox_vars.append(spinbox_var)
 
         # Add buttons for rotation and mirroring
         rotation_frame = ttk.Frame(self.controls_frame)
