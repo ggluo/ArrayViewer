@@ -60,6 +60,9 @@ class ArrayViewer:
         self.mirror = False  # Initialize mirroring
         self.colormap = 'gray'  # Initialize colormap
         self.display_mode = 'magnitude'  # Initialize display mode
+        self.window_level = 0.5  # Initialize window level
+        self.window_width = 1.0  # Initialize window width
+        self.normalize_slice = False  # Initialize slice normalization
 
         
         main_frame = ttk.Frame(root)
@@ -70,6 +73,7 @@ class ArrayViewer:
         
         self.index_vars = []
         self.check_vars = []
+        self.spinbox_vars = []
         non_singleton_dims = [i for i, dim in enumerate(array.shape) if dim > 1]
 
         if len(non_singleton_dims) >= 2:
@@ -84,7 +88,7 @@ class ArrayViewer:
             self.check_vars.append(check_var)
             
             combined_frame = ttk.Frame(self.controls_frame)
-            combined_frame.grid(row=i, column=0, columnspan=2, pady=5)
+            combined_frame.grid(row=i, column=0, columnspan=1, pady=5)
             
             check = ttk.Checkbutton(combined_frame, style="Small.TCheckbutton", variable=check_var, command=self.update_view, width=2)
             check.pack(side=tk.LEFT)
@@ -92,11 +96,24 @@ class ArrayViewer:
             label.pack(side=tk.LEFT)
             
             
-            spinbox = ttk.Spinbox(self.controls_frame, from_=0, to=array.shape[i] - 1, textvariable=var, command=self.update_view, width=2)
+            spinbox_var = tk.StringVar()
+            spinbox_var.set('0')
+            spinbox = ttk.Spinbox(self.controls_frame, from_=0, to=array.shape[i] - 1, textvariable=spinbox_var, command=self.update_view, width=5)
             spinbox.grid(row=i, column=2, columnspan=1)
+            spinbox.bind('<MouseWheel>', lambda event, s=spinbox, v=spinbox_var: self.on_spinbox_scroll(event, s, v))
+            spinbox.bind('<Button-4>', lambda event, s=spinbox, v=spinbox_var: self.on_spinbox_scroll(event, s, v))
+            spinbox.bind('<Button-5>', lambda event, s=spinbox, v=spinbox_var: self.on_spinbox_scroll(event, s, v))
+            spinbox.bind('<FocusOut>', lambda event, s=spinbox, v=spinbox_var: self.update_index(event, s, v, i))
 
             label1 = ttk.Label(self.controls_frame, text=f"{self.array_shape[i]}")
             label1.grid(row=i, column=3, columnspan=1, padx=5, pady=5)
+
+            self.spinbox_vars.append(spinbox_var)
+
+            label1 = ttk.Label(self.controls_frame, text=f"{self.array_shape[i]}")
+            label1.grid(row=i, column=3, columnspan=1, padx=5, pady=5)
+
+            self.spinbox_vars.append(spinbox_var)
 
         # Add buttons for rotation and mirroring
         rotation_frame = ttk.Frame(self.controls_frame)
@@ -118,15 +135,41 @@ class ArrayViewer:
         save_button = ttk.Button(rotation_frame, text="Save", command=self.save_image, width=5)
         save_button.pack(side=tk.LEFT, padx=2)
         
-        # Add colormap selection
-        colormap_label = ttk.Label(self.controls_frame, text="       Colormap:")
-        colormap_label.grid(row=14, column=0, columnspan=1)
+        # Add window level and width controls
+        window_frame = ttk.Frame(self.controls_frame)
+        window_frame.grid(row=14, column=0, columnspan=5, pady=10)
+
+        level_label = ttk.Label(window_frame, text="Level:")
+        level_label.pack(side=tk.LEFT, padx=2)
+        self.level_var = tk.DoubleVar(value=self.window_level)
+        level_slider = ttk.Scale(window_frame, from_=0.0, to=1.0, variable=self.level_var, orient=tk.HORIZONTAL, command=self.update_window)
+        level_slider.pack(side=tk.LEFT, padx=2)
+
+        width_label = ttk.Label(window_frame, text="Width:")
+        width_label.pack(side=tk.LEFT, padx=2)
+        self.width_var = tk.DoubleVar(value=self.window_width)
+        width_slider = ttk.Scale(window_frame, from_=0.1, to=2.0, variable=self.width_var, orient=tk.HORIZONTAL, command=self.update_window)
+        width_slider.pack(side=tk.LEFT, padx=2)
+
+        #  Add colormap selection and normalization toggle
+        colormap_frame = ttk.Frame(self.controls_frame)
+        colormap_frame.grid(row=15, column=0, columnspan=5, pady=10)
+
+        colormap_label = ttk.Label(colormap_frame, text="Colormap:")
+        colormap_label.pack(side=tk.LEFT, padx=2)
         
         self.colormap_var = tk.StringVar(value=self.colormap)
-        colormap_combobox = ttk.Combobox(self.controls_frame, textvariable=self.colormap_var, values=plt.colormaps(), width=10)
-        colormap_combobox.grid(row=14, column=1, columnspan=1)
+        colormap_combobox = ttk.Combobox(colormap_frame, textvariable=self.colormap_var, values=plt.colormaps(), width=10)
+        colormap_combobox.pack(side=tk.LEFT, padx=2)
         colormap_combobox.bind("<<ComboboxSelected>>", self.update_colormap)
-    
+
+        normalize_check = ttk.Button(colormap_frame, text="Normalize", command=self.toggle_normalization, width=10)
+        normalize_check.pack(side=tk.LEFT, padx=2)
+
+        # Information display
+        self.info_label = ttk.Label(self.controls_frame, text="", anchor="w", justify=tk.LEFT)
+        self.info_label.grid(row=16, column=0, columnspan=5, sticky="w", pady=10)
+
         self.figure, self.ax = plt.subplots(1, 1, figsize=(10, 10))
         self.canvas = FigureCanvasTkAgg(self.figure, master=main_frame)
         self.canvas.get_tk_widget().pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
@@ -162,6 +205,15 @@ class ArrayViewer:
                     image = np.abs(current_slice)
                 else:
                     image = np.angle(current_slice)
+
+                if self.normalize_slice:
+                    image = (image - np.min(image)) / (np.max(image) - np.min(image))
+                
+                # Apply window level and width
+                level = self.window_level
+                width = self.window_width
+                image = np.clip(image, level - width / 2, level + width / 2)
+                image = (image - (level - width / 2)) / width
                 
                 # Apply rotation
                 if self.rotation_angle != 0:
@@ -179,6 +231,16 @@ class ArrayViewer:
                 self.ax.axis('off')
                 self.figure.tight_layout()
             self.canvas.draw()
+
+             # Update information display
+            info_text = (
+                f"Display Mode: {self.display_mode}\n"
+                f"Colormap: {self.colormap}, Normalization: {self.normalize_slice}\n"
+                f"Level: {self.window_level}, Width: {self.window_width}\n"
+                f"Rotation Angle: {self.rotation_angle}, Mirroring: {self.mirror}"
+            )
+            self.info_label.config(text=info_text)
+
         except Exception as e:
             logging.error(f"Error in update_view: {e}")
 
@@ -207,6 +269,37 @@ class ArrayViewer:
         self.colormap = self.colormap_var.get()
         self.update_view()
 
+    def update_window(self, event=None):
+        self.window_level = self.level_var.get()
+        self.window_width = self.width_var.get()
+        self.update_view()
+
+    def toggle_normalization(self):
+        self.normalize_slice = not self.normalize_slice
+        self.update_view()
+
+    def on_spinbox_scroll(self, event, spinbox, var):
+        
+        current_value = int(spinbox.get())
+        if event.delta > 0 or event.num == 4:
+            if current_value < int(spinbox.cget('to')):
+                var.set(current_value + 1)
+        elif event.delta < 0 or event.num == 5:
+            if current_value > int(spinbox.cget('from')):
+                var.set(current_value - 1)
+        self.update_view()
+
+
+    def update_index(self, event, spinbox, var, index):
+        try:
+            value = int(spinbox.get())
+            var.set(value)
+            self.current_indices[index] = value
+            self.update_view()
+        except ValueError:
+            logging.error(f"Invalid value entered for dimension {index}: {spinbox.get()}")
+            spinbox.set(self.current_indices[index])
+
     def save_image(self):
         try:
             current_slice = self.get_current_slice()
@@ -233,6 +326,7 @@ def start_viewer(file_path):
     root.geometry("1000x700")
     
     array = read_array_file(file_path)
+    array = array / np.max(np.abs(array))  # Normalize the array for visualization
     app = ArrayViewer(root, array)
     
     root.protocol("WM_DELETE_WINDOW", root.quit)  # Quit the main loop when the window is closed
