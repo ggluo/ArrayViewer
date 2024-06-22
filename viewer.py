@@ -217,7 +217,7 @@ class ArrayViewer:
                 if self.mirror:
                     image = np.fliplr(image)
                 
-                self.ax.imshow(image, cmap=self.colormap)
+                self.ax.imshow(image, cmap=self.colormap, vmin=0, vmax=1)
                 self.ax.axis('off')
                 self.figure.tight_layout()
             else:
@@ -228,9 +228,9 @@ class ArrayViewer:
 
              # Update information display
             info_text = (
-                f"Display Mode: {self.display_mode}\n"
-                f"Colormap: {self.colormap}, Normalization: {self.normalize_slice}\n"
-                f"Level: {self.window_level}, Width: {self.window_width}\n"
+                f"Display: {self.display_mode}, Colormap: {self.colormap}\n"
+                f"Normalization: {self.normalize_slice}, Max: {np.max(image):.2f}, Min: {np.min(image):.2f}\n"
+                f"Level: {self.window_level:.2f}, Width: {self.window_width:.2f}\n"
                 f"Rotation Angle: {self.rotation_angle}, Mirroring: {self.mirror}"
             )
             self.info_label.config(text=info_text)
