@@ -217,8 +217,9 @@ class ArrayViewer:
                     image = np.angle(current_slice)
 
                 if self.normalize_slice:
-                    image = (image - np.min(image)) / (np.max(image) - np.min(image))
-                
+                    image = (image - self.min) / (self.max - self.min)
+                self.max = np.max(image)
+                self.min = np.min(image)
                 # Apply window level and width
                 level = self.window_level
                 width = self.window_width
@@ -245,7 +246,7 @@ class ArrayViewer:
              # Update information display
             info_text = (
                 f"Display: {self.display_mode}, Colormap: {self.colormap}\n"
-                f"Normalization: {self.normalize_slice}, Max: {np.max(image):.2f}, Min: {np.min(image):.2f}\n"
+                f"Normalization: {self.normalize_slice}, Max: {self.max:.2f}, Min: {self.min:.2f}\n"
                 f"Level: {self.window_level:.2f}, Width: {self.window_width:.2f}\n"
                 f"Rotation Angle: {self.rotation_angle}, Mirroring: {self.mirror}"
             )
