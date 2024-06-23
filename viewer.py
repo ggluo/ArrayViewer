@@ -4,6 +4,7 @@
 import tkinter as tk
 from tkinter import ttk
 import numpy as np
+import imageio
 import matplotlib.pyplot as plt
 plt.switch_backend('TkAgg')
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -126,8 +127,8 @@ class ArrayViewer:
         self.toggle_button = ttk.Button(rotation_frame, text="Mag", command=self.toggle_display_mode, width=5)
         self.toggle_button.pack(side=tk.LEFT, padx=2)
 
-        save_button = ttk.Button(rotation_frame, text="Save", command=self.save_image, width=5)
-        save_button.pack(side=tk.LEFT, padx=2)
+        normalize_check = ttk.Button(rotation_frame, text="Norm", command=self.toggle_normalization, width=5)
+        normalize_check.pack(side=tk.LEFT, padx=2)
         
         # Add window level and width controls
         window_frame = ttk.Frame(self.controls_frame)
@@ -145,20 +146,35 @@ class ArrayViewer:
         width_slider = ttk.Scale(window_frame, from_=0.1, to=2.0, variable=self.width_var, orient=tk.HORIZONTAL, command=self.update_window)
         width_slider.pack(side=tk.LEFT, padx=2)
 
+        
+
         #  Add colormap selection and normalization toggle
         colormap_frame = ttk.Frame(self.controls_frame)
         colormap_frame.grid(row=15, column=0, columnspan=5, pady=10)
 
-        colormap_label = ttk.Label(colormap_frame, text="Colormap:")
+        colormap_label = ttk.Label(colormap_frame, text="Map:")
         colormap_label.pack(side=tk.LEFT, padx=2)
         
         self.colormap_var = tk.StringVar(value=self.colormap)
-        colormap_combobox = ttk.Combobox(colormap_frame, textvariable=self.colormap_var, values=plt.colormaps(), width=10)
+        colormap_combobox = ttk.Combobox(colormap_frame, textvariable=self.colormap_var, values=plt.colormaps(), width=8)
         colormap_combobox.pack(side=tk.LEFT, padx=2)
         colormap_combobox.bind("<<ComboboxSelected>>", self.update_colormap)
 
-        normalize_check = ttk.Button(colormap_frame, text="Normalize", command=self.toggle_normalization, width=10)
-        normalize_check.pack(side=tk.LEFT, padx=2)
+        # Add input box and button to export image as video along one dimension
+        video_export_frame = ttk.Frame(colormap_frame)
+        video_export_frame.pack(side=tk.LEFT, padx=2)
+
+        save_button = ttk.Button(video_export_frame, text="Save", command=self.save_image, width=5)
+        save_button.pack(side=tk.LEFT, padx=2)
+
+        export_video_button = ttk.Button(video_export_frame, text="Video", command=self.export_as_video, width=5)
+        export_video_button.pack(side=tk.LEFT, padx=2)
+
+        self.export_dim_var = tk.IntVar(value=0)
+        export_dim_spinbox = ttk.Spinbox(video_export_frame, from_=0, to=11, textvariable=self.export_dim_var, width=2)
+        export_dim_spinbox.pack(side=tk.LEFT, padx=2)
+
+        
 
         # Information display
         self.info_label = ttk.Label(self.controls_frame, text="", anchor="w", justify=tk.LEFT)
@@ -313,6 +329,48 @@ class ArrayViewer:
                     plt.imsave(filename, image, cmap=self.colormap)
         except Exception as e:
             logging.error(f"Error in save_image: {e}")
+    
+    def export_as_video(self):
+        try:
+            export_dim = self.export_dim_var.get()
+            if export_dim is None or export_dim < 0 or export_dim >= len(self.array_shape):
+                return
+            
+            # Get filename to save the video
+            filename = tk.filedialog.asksaveasfilename(defaultextension=".mp4", filetypes=[("MP4 files", "*.mp4"), ("All files", "*.*")])
+            if not filename:
+                return
+            
+            with imageio.get_writer(filename, fps=5) as writer:
+                for i in range(self.array_shape[export_dim]):
+                    self.index_vars[export_dim].set(i)
+                    current_slice = self.get_current_slice()
+                    if current_slice is not None and current_slice.ndim == 2:
+                        image = np.abs(current_slice)
+
+                        # Apply rotation
+                        if self.rotation_angle != 0:
+                            image = np.rot90(image, self.rotation_angle // 90)
+
+                        # Apply mirroring
+                        if self.mirror:
+                            image = np.fliplr(image)
+
+                        # Normalize slice
+                        if self.normalize_slice:
+                            image = (image - np.min(image)) / (np.max(image) - np.min(image))
+
+                        # Apply window level and width
+                        level = self.window_level
+                        width = self.window_width
+                        image = np.clip(image, level - width / 2, level + width / 2)
+                        image = (image - (level - width / 2)) / width
+
+                        # Write the image to the video
+                        writer.append_data((255 * image).astype(np.uint8))
+            print(f"Video saved to {filename}")
+        except Exception as e:
+            logging.error(f"Error in export_as_video: {e}")
 
 def start_viewer(file_path):
     root = tk.Tk()
