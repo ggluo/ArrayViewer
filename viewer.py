@@ -24,6 +24,12 @@ def read_array_file(name):
             array = np.load(name)
             dims = list(array.shape)
 
+        elif name.endswith('.npz'):
+            with np.load(name) as data:
+                array = data['arr_0']
+                dims = list(array.shape)
+
+
         elif name.endswith(''):
             # get dims from .hdr
             with open(name + ".hdr", "r") as h:
@@ -64,6 +70,8 @@ class ArrayViewer:
         self.window_level = 0.5  # Initialize window level
         self.window_width = 1.0  # Initialize window width
         self.normalize_slice = False  # Initialize slice normalization
+        self.rgb_dim = None  # Initialize RGB dimension
+        self.rgb_display = False  # Initialize RGB display
 
         
         main_frame = ttk.Frame(root)
@@ -146,13 +154,12 @@ class ArrayViewer:
         width_slider = ttk.Scale(window_frame, from_=0.1, to=2.0, variable=self.width_var, orient=tk.HORIZONTAL, command=self.update_window)
         width_slider.pack(side=tk.LEFT, padx=2)
 
-        
 
         #  Add colormap selection and normalization toggle
         colormap_frame = ttk.Frame(self.controls_frame)
         colormap_frame.grid(row=15, column=0, columnspan=5, pady=10)
 
-        colormap_label = ttk.Label(colormap_frame, text="Map:")
+        colormap_label = ttk.Label(colormap_frame, text="Colormap:")
         colormap_label.pack(side=tk.LEFT, padx=2)
         
         self.colormap_var = tk.StringVar(value=self.colormap)
@@ -160,25 +167,34 @@ class ArrayViewer:
         colormap_combobox.pack(side=tk.LEFT, padx=2)
         colormap_combobox.bind("<<ComboboxSelected>>", self.update_colormap)
 
-        # Add input box and button to export image as video along one dimension
-        video_export_frame = ttk.Frame(colormap_frame)
-        video_export_frame.pack(side=tk.LEFT, padx=2)
+        rgb_label = ttk.Label(colormap_frame, text="RGB Dim:")
+        rgb_label.pack(side=tk.LEFT, padx=2)
 
-        save_button = ttk.Button(video_export_frame, text="Save", command=self.save_image, width=5)
+        self.rgb_dim_var = tk.IntVar(value=-1)
+        self.rgb_combobox = ttk.Spinbox(colormap_frame, from_=0, to=11, textvariable=self.rgb_dim_var, command=self.update_view, width=2)
+        self.rgb_combobox.pack(side=tk.LEFT, padx=2)
+        self.rgb_combobox.bind("<<SpinboxSelected>>", self.update_view)
+
+        save_button = ttk.Button(colormap_frame, text="Save", command=self.save_image, width=5)
         save_button.pack(side=tk.LEFT, padx=2)
 
-        export_video_button = ttk.Button(video_export_frame, text="Video", command=self.export_as_video, width=5)
-        export_video_button.pack(side=tk.LEFT, padx=2)
+        # Add video export controls
+        video_export_frame = ttk.Frame(self.controls_frame)
+        video_export_frame.grid(row=16, column=0, columnspan=5, pady=10)
+        v_label = ttk.Label(video_export_frame, text="Video Dim:")
+        v_label.pack(side=tk.LEFT, padx=2)
 
         self.export_dim_var = tk.IntVar(value=0)
         export_dim_spinbox = ttk.Spinbox(video_export_frame, from_=0, to=11, textvariable=self.export_dim_var, width=2)
         export_dim_spinbox.pack(side=tk.LEFT, padx=2)
 
-        
+        export_video_button = ttk.Button(video_export_frame, text="Save video", command=self.export_as_video, width=10)
+        export_video_button.pack(side=tk.LEFT, padx=2)
+
 
         # Information display
         self.info_label = ttk.Label(self.controls_frame, text="", anchor="w", justify=tk.LEFT)
-        self.info_label.grid(row=16, column=0, columnspan=5, sticky="w", pady=10)
+        self.info_label.grid(row=17, column=0, columnspan=5, sticky="w", pady=10)
 
         self.figure, self.ax = plt.subplots(1, 1, figsize=(10, 10))
         self.canvas = FigureCanvasTkAgg(self.figure, master=main_frame)
@@ -199,7 +215,19 @@ class ArrayViewer:
                     slices.append(slice(None))  # Keep this dimension as a slice
                 else:
                     slices.append(self.index_vars[i].get())  # Fix this dimension at its current index
-                    
+
+                        # If RGB is enabled, generate a 3-channel image
+            rgb_dim = self.rgb_dim_var.get()
+            if rgb_dim != -1 and self.array_shape[rgb_dim] == 3:
+                # Extract three slices along the selected dimension
+                if rgb_dim in enabled_indices:
+                    return None  # RGB dimension cannot be one of the two enabled dimensions
+                else:
+                    slices[rgb_dim] = slice(None)
+                    rgb_slices = self.array[tuple(slices)]
+                    r, g, b = np.split(rgb_slices, 3, axis=rgb_slices.shape.index(3))
+                    return np.stack([r, g, b], axis=-1).squeeze()
+
             logging.debug(f"Current slices: {slices}")
             return self.array[tuple(slices)]
         except Exception as e:
@@ -210,22 +238,35 @@ class ArrayViewer:
         try:
             self.ax.clear()
             current_slice = self.get_current_slice()
-            if current_slice is not None and current_slice.ndim == 2:
-                if self.display_mode == 'magnitude':
-                    image = np.abs(current_slice)
-                else:
-                    image = np.angle(current_slice)
 
-                if self.normalize_slice:
-                    image = (image - self.min) / (self.max - self.min)
-                self.max = np.max(image)
-                self.min = np.min(image)
-                # Apply window level and width
-                level = self.window_level
-                width = self.window_width
-                image = np.clip(image, level - width / 2, level + width / 2)
-                image = (image - (level - width / 2)) / width
-                
+            if current_slice is not None:
+                if current_slice.ndim == 2:
+                    if self.display_mode == 'magnitude':
+                        image = np.abs(current_slice)
+                    else:
+                        image = np.angle(current_slice)
+
+                    if self.normalize_slice:
+                        image = (image - self.min) / (self.max - self.min)
+                    self.max = np.max(image)
+                    self.min = np.min(image)
+                    # Apply window level and width
+                    level = self.window_level
+                    width = self.window_width
+                    image = np.clip(image, level - width / 2, level + width / 2)
+                    image = (image - (level - width / 2)) / width
+                    self.rgb_display = False
+
+                elif current_slice.ndim == 3 and current_slice.shape[-1] == 3:
+                    self.rgb_display = True
+                    image = current_slice # normalize to 0-1
+
+                else:
+                    self.ax.text(0.5, 0.5, 'Invalid slice dimensions', horizontalalignment='center', verticalalignment='center')
+                    self.ax.axis('off')
+                    self.figure.tight_layout()
+
+
                 # Apply rotation
                 if self.rotation_angle != 0:
                     image = np.rot90(image, self.rotation_angle // 90)
@@ -234,13 +275,15 @@ class ArrayViewer:
                 if self.mirror:
                     image = np.fliplr(image)
                 
-                self.ax.imshow(image, cmap=self.colormap, vmin=0, vmax=1)
-                self.ax.axis('off')
-                self.figure.tight_layout()
+                if self.rgb_display:
+                    self.ax.imshow(image)
+                else:
+                    self.ax.imshow(image, cmap=self.colormap, vmin=0, vmax=1)
+            
             else:
-                self.ax.text(0.5, 0.5, 'Select exactly 2 dimensions to display', horizontalalignment='center', verticalalignment='center')
-                self.ax.axis('off')
-                self.figure.tight_layout()
+                self.ax.text(0.5, 0.5, 'Select exactly 2 dimensions to display or correct RGB dim', horizontalalignment='center', verticalalignment='center')
+            self.ax.axis('off')
+            self.figure.tight_layout()
             self.canvas.draw()
 
              # Update information display
